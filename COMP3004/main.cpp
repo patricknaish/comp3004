@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <sstream>
 #include <GL/glew.h>
 #include <GL/glfw.h>
 #include <glm/glm.hpp>
@@ -10,10 +11,12 @@ int generateSphere(float radius, int ) {
 
 	glm::vec3 pos;
 
+	return 0;
+
 }
 
 int render(void) {
-
+	return 0;
 }
 
 int main(void) {
@@ -26,12 +29,18 @@ int main(void) {
 	}
 
 	int running = GL_TRUE;
-	int start_time = glfwGetTime();
+	double start_time = glfwGetTime();
+	int frame_count = 0;
+	char title_str[255];
 	while( running ) { 
-		
-		int current_time = glfwGetTime();
-		//Do something with the time
-		start_time = current_time;
+		double current_time = glfwGetTime();
+		if (current_time - start_time > 1) {
+			sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-start_time));
+			glfwSetWindowTitle(title_str);
+			frame_count = 0;
+			start_time = current_time;
+		}
+		frame_count++;
 
 		render();
         glfwSwapBuffers();
