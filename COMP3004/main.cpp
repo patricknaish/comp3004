@@ -7,7 +7,7 @@
 #include <GL/glfw.h>
 #include <glm/glm.hpp>
 
-int generateSphere(float radius, int ) {
+int generateSphere(float radius, int x) {
 
 	glm::vec3 pos;
 
@@ -15,8 +15,13 @@ int generateSphere(float radius, int ) {
 
 }
 
-int render(void) {
-	return 0;
+void render(void) {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glBegin(GL_TRIANGLES);
+    glVertex3f(0.5f, -0.5f, 0.f);
+    glVertex3f(0.0f, 0.5f, 0.f);
+    glVertex3f(-0.5f, -0.5f, 0.f);
+    glEnd();
 }
 
 int main(void) {
@@ -27,7 +32,7 @@ int main(void) {
 		glfwTerminate();
 		exit(EXIT_FAILURE);
 	}
-
+        glewInit();
 	int running = GL_TRUE;
 	double start_time = glfwGetTime();
 	int frame_count = 0;
