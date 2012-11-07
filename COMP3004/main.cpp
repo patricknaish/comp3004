@@ -55,6 +55,27 @@ void render() {
 	glFlush();
 }
 
+void GLFWCALL keyHandler(int key, int action) {
+	if (action == GLFW_PRESS) {
+		if (key == GLFW_KEY_ESC || key == 'Q' || key == 'q') {
+			glfwTerminate();
+			exit(EXIT_SUCCESS);
+		}
+		switch(key) {
+			case 'A': ;
+			case 'a': /*do something*/ break;
+			case 'B': ;
+			case 'b': /*do something*/ break;
+			case 'C': ;
+			case 'c': /*do something*/ break;
+			case 'D': ;
+			case 'd': /*do something*/ break;
+			case 'E': ;
+			case 'e': /*do something*/ break;
+		}
+	}
+}
+
 int main(void) {
 	if (!glfwInit()) {
 		exit(EXIT_FAILURE);
@@ -65,6 +86,7 @@ int main(void) {
 		exit(EXIT_FAILURE);
 	}
 	glewInit();
+	glfwSetKeyCallback(keyHandler);
 
 	//Sphere stuff
 	generateSphere(0.8,40,40);
@@ -96,9 +118,6 @@ int main(void) {
 
 		render();
         glfwSwapBuffers();
-		running = !glfwGetKey(GLFW_KEY_ESC) && glfwGetWindowParam(GLFW_OPENED);
+		running = glfwGetWindowParam(GLFW_OPENED);
 	}
-
-	glfwTerminate();
-	exit(EXIT_SUCCESS);
 }
