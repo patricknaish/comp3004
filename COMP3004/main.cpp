@@ -175,16 +175,16 @@ int main(void) {
 		frame_count++;
 
 		mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
-			mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
-			View = rotate(View, rotation, vec3(1, 1, 1));
-			mat4 Model = mat4(1.0f);
-			mat4 MVP = Projection * View * Model;
-			GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
-			glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-			rotation++;
-			if (rotation >= 360) {
-				rotation = 0;
-			}
+		mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
+		View = rotate(View, rotation, vec3(1, 1, 1));
+		mat4 Model = mat4(1.0f);
+		mat4 MVP = Projection * View * Model;
+		GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
+		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+		rotation++;
+		if (rotation >= 360) {
+			rotation = 0;
+		}
 		
 		render();
         glfwSwapBuffers();
