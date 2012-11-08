@@ -26,7 +26,7 @@ GLuint shaderProgram;
 
 vector<Vertex> sphereVerts;
 vector<GLushort> sphereIndices;
-double start_time = 0;
+const float speed = 60;
 
 //Modified from Tutorial 2
 char* filetobuf(char *file) { /* A simple function that will read a file into an allocated char pointer buffer */
@@ -85,10 +85,8 @@ void generateSphere(double rad, int slices, int sectors) {
 			z = (double)(rad * cos(theta));
 			Vertex vals = {x, y, z};
 			sphereVerts.push_back(vals);
-			sphereIndices.push_back((i+1) * sectors + j+1);
 			sphereIndices.push_back(i * sectors + j);
 			sphereIndices.push_back((i+1) * sectors + j+1);
-			sphereIndices.push_back(i * sectors + j);
 		}
 	}
 }
@@ -161,16 +159,22 @@ int main(void) {
 
 	//Running stuff
 	int running = GL_TRUE;
+	double old_time = 0, fps_time = 0;
 	int frame_count = 0;
 	char title_str[255];
 	float rotation = 0.f;
 	while( running ) { 
 		double current_time = glfwGetTime();
-		if (current_time - start_time >= 1) {
-			sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-start_time));
+		rotation += (current_time - old_time) * speed;
+		if (rotation >= 360.f) {
+			rotation = 0.f;
+		}
+		old_time = current_time;
+		if (current_time - fps_time >= 1) {
+			sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-fps_time));
 			glfwSetWindowTitle(title_str);
 			frame_count = 0;
-			start_time = current_time;
+			fps_time = current_time;
 		}
 		frame_count++;
 
@@ -181,10 +185,6 @@ int main(void) {
 		mat4 MVP = Projection * View * Model;
 		GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
 		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-		rotation++;
-		if (rotation >= 360) {
-			rotation = 0;
-		}
 		
 		render();
         glfwSwapBuffers();
