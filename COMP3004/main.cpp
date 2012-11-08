@@ -8,6 +8,9 @@
 #include <GL/glew.h>
 #include <GL/glfw.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 
 using namespace std; 
 using namespace glm;
@@ -17,8 +20,56 @@ typedef struct {
 } Vertex;
 
 GLuint vao, vbo;
+GLchar *vertexsource, *fragmentsource;
+GLuint vertexshader, fragmentshader;
+GLuint shaderProgram;
+
 vector<Vertex> sphereVerts;
 vector<GLushort> sphereIndices;
+double start_time = 0;
+
+//Modified from Tutorial 2
+char* filetobuf(char *file) { /* A simple function that will read a file into an allocated char pointer buffer */
+    FILE *fptr;
+    long length;
+    char *buf;
+    fptr = fopen(file, "rb"); /* Open file for reading */
+    if (!fptr) { /* Return NULL on failure */
+        fprintf(stderr, "failed to open %s\n", file);
+        return NULL;
+        }
+    fseek(fptr, 0, SEEK_END); /* Seek to the end of the file */
+    length = ftell(fptr); /* Find out how many bytes into the file we are */
+    buf = (char*)malloc(length+1); /* Allocate a buffer for the entire length of the file and a null terminator */
+    fseek(fptr, 0, SEEK_SET); /* Go back to the beginning of the file */
+    fread(buf, length, 1, fptr); /* Read the contents of the file in to the buffer */
+    fclose(fptr); /* Close the file */
+    buf[length] = 0; /* Null terminator */
+    return buf; /* Return the buffer */
+}
+
+//Modified from Tutorial 2
+void setupShaders() {
+	char text[1000];
+    int length;
+    fprintf(stderr, "Set up shaders\n"); /* Allocate and assign two Vertex Buffer Objects to our handle */
+    vertexsource = filetobuf("shader.vert"); /* Read our shaders into the appropriate buffers */
+    fragmentsource = filetobuf("shader.frag");
+    vertexshader = glCreateShader(GL_VERTEX_SHADER); /* Assign our handles a "name" to new shader objects */
+    fragmentshader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(vertexshader, 1, (const GLchar**)&vertexsource, 0); /* Associate the source code buffers with each handle */
+    glShaderSource(fragmentshader, 1, (const GLchar**)&fragmentsource, 0);
+    glCompileShader(fragmentshader);/* Compile our shader objects */
+    glCompileShader(vertexshader);
+    shaderProgram = glCreateProgram();/* Assign our program handle a "name" */
+    glAttachShader(shaderProgram, vertexshader); /* Attach our shaders to our program */
+    glAttachShader(shaderProgram, fragmentshader);
+    glLinkProgram(shaderProgram); /* Link our program */
+    glGetProgramInfoLog(shaderProgram, 1000, &length, text); // Check for errors
+    if(length>0)
+        fprintf(stderr, "Validate Shader Program\n%s\n",text );
+    glUseProgram(shaderProgram); /* Set it as being actively used */
+}
 
 void generateSphere(double rad, int slices, int sectors) {
 
@@ -72,6 +123,10 @@ void GLFWCALL keyHandler(int key, int action) {
 			case 'd': /*do something*/ break;
 			case 'E': ;
 			case 'e': /*do something*/ break;
+			case GLFW_KEY_UP: ; break;
+			case GLFW_KEY_DOWN: ; break;
+			case GLFW_KEY_RIGHT: ; break;
+			case GLFW_KEY_LEFT: ; break;
 		}
 	}
 }
@@ -87,6 +142,9 @@ int main(void) {
 	}
 	glewInit();
 	glfwSetKeyCallback(keyHandler);
+	glEnable(GL_DEPTH_TEST);
+
+	setupShaders();
 
 	//Sphere stuff
 	generateSphere(0.8,40,40);
@@ -103,9 +161,9 @@ int main(void) {
 
 	//Running stuff
 	int running = GL_TRUE;
-	double start_time = glfwGetTime();
 	int frame_count = 0;
 	char title_str[255];
+	float rotation = 0.f;
 	while( running ) { 
 		double current_time = glfwGetTime();
 		if (current_time - start_time >= 1) {
@@ -116,8 +174,21 @@ int main(void) {
 		}
 		frame_count++;
 
+		mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
+			mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
+			View = rotate(View, rotation, vec3(1, 1, 1));
+			mat4 Model = mat4(1.0f);
+			mat4 MVP = Projection * View * Model;
+			GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
+			glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+			rotation++;
+			if (rotation >= 360) {
+				rotation = 0;
+			}
+		
 		render();
         glfwSwapBuffers();
 		running = glfwGetWindowParam(GLFW_OPENED);
+		
 	}
 }
