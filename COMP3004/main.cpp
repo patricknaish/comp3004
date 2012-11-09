@@ -24,8 +24,6 @@ GLchar *vertexsource, *fragmentsource;
 GLuint vertexshader, fragmentshader;
 GLuint shaderProgram;
 
-vector<Vertex> sphereVerts;
-vector<GLushort> sphereIndices;
 const float speed = 60;
 
 //Modified from Tutorial 2
@@ -33,11 +31,12 @@ char* filetobuf(char *file) { /* A simple function that will read a file into an
     FILE *fptr;
     long length;
     char *buf;
-    fptr = fopen(file, "rb"); /* Open file for reading */
-    if (!fptr) { /* Return NULL on failure */
+	errno_t err;
+    err = fopen_s(&fptr, file, "rb"); /* Open file for reading */
+    if (err != 0) { /* Return NULL on failure */
         fprintf(stderr, "failed to open %s\n", file);
         return NULL;
-        }
+    }
     fseek(fptr, 0, SEEK_END); /* Seek to the end of the file */
     length = ftell(fptr); /* Find out how many bytes into the file we are */
     buf = (char*)malloc(length+1); /* Allocate a buffer for the entire length of the file and a null terminator */
@@ -71,8 +70,22 @@ void setupShaders() {
     glUseProgram(shaderProgram); /* Set it as being actively used */
 }
 
-void generateSphere(double rad, int slices, int sectors) {
+class IModel {
+	public:
+		virtual ~IModel() {};
+		virtual void render() = 0;
+};
 
+class Sphere: public IModel {
+	private:
+		vector<Vertex> sphereVerts, sphereNormals;
+		vector<GLushort> sphereIndices;
+	public:
+		Sphere(double rad, int slices, int sectors);
+		void render();
+};
+
+Sphere::Sphere(double rad, int slices, int sectors) {
 	double phi, theta;
 	double x, y, z;
 
@@ -85,23 +98,84 @@ void generateSphere(double rad, int slices, int sectors) {
 			z = (double)(rad * cos(theta));
 			Vertex vals = {x, y, z};
 			sphereVerts.push_back(vals);
+			sphereNormals.push_back(vals);
 			sphereIndices.push_back(i * sectors + j);
 			sphereIndices.push_back((i+1) * sectors + j+1);
 		}
 	}
+
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sphereVerts.size() * sizeof(Vertex), &sphereVerts[0], GL_STATIC_DRAW); 
+
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao); 
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 0, 0);
 }
 
-void render() {
+void Sphere::render() {
 	glClearColor(0,0,0,0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	glBindVertexArray(vao);
-	//glDrawArrays(GL_LINES, 0, sphereVerts.size());
 	glDrawElements(GL_QUAD_STRIP, sphereIndices.size(), GL_UNSIGNED_SHORT, &sphereIndices[0]);
 	glBindVertexArray(0);
 
 	glFlush();
+}
+
+class IScene {
+	public:
+		virtual ~IScene() {};
+		virtual void run() = 0;
+};
+
+class SceneA: public IScene {
+	public:
+		SceneA() {};
+		void run();
+};
+
+void SceneA::run() {
+	Sphere sphere = Sphere(0.8, 40, 40);
+
+	//Running stuff
+	int running = GL_TRUE;
+	double old_time = 0, fps_time = 0;
+	int frame_count = 0;
+	char title_str[255];
+	float rotation = 0.f;
+	while( running ) { 
+		double current_time = glfwGetTime();
+		rotation += (current_time - old_time) * speed;
+		if (rotation >= 360.f) {
+			rotation = 0.f;
+		}
+		old_time = current_time;
+		if (current_time - fps_time >= 1) {
+			sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-fps_time));
+			glfwSetWindowTitle(title_str);
+			frame_count = 0;
+			fps_time = current_time;
+		}
+		frame_count++;
+
+		mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
+		mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
+		View = rotate(View, rotation, vec3(1, 1, 1));
+		mat4 Model = mat4(1.0f);
+		mat4 MVP = Projection * View * Model;
+		GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
+		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+		
+		sphere.render();
+        glfwSwapBuffers();
+		running = glfwGetWindowParam(GLFW_OPENED);
+		
+	}
 }
 
 void GLFWCALL keyHandler(int key, int action) {
@@ -144,51 +218,6 @@ int main(void) {
 
 	setupShaders();
 
-	//Sphere stuff
-	generateSphere(0.8,40,40);
-
-	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sphereVerts.size() * sizeof(Vertex), &sphereVerts[0], GL_STATIC_DRAW); 
-
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao); 
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 0, 0);
-
-	//Running stuff
-	int running = GL_TRUE;
-	double old_time = 0, fps_time = 0;
-	int frame_count = 0;
-	char title_str[255];
-	float rotation = 0.f;
-	while( running ) { 
-		double current_time = glfwGetTime();
-		rotation += (current_time - old_time) * speed;
-		if (rotation >= 360.f) {
-			rotation = 0.f;
-		}
-		old_time = current_time;
-		if (current_time - fps_time >= 1) {
-			sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-fps_time));
-			glfwSetWindowTitle(title_str);
-			frame_count = 0;
-			fps_time = current_time;
-		}
-		frame_count++;
-
-		mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
-		mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
-		View = rotate(View, rotation, vec3(1, 1, 1));
-		mat4 Model = mat4(1.0f);
-		mat4 MVP = Projection * View * Model;
-		GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
-		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-		
-		render();
-        glfwSwapBuffers();
-		running = glfwGetWindowParam(GLFW_OPENED);
-		
-	}
+	SceneA sceneA = SceneA();
+	sceneA.run();
 }
