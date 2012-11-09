@@ -150,7 +150,7 @@ void SceneA::run() {
 	float rotation = 0.f;
 	while( running ) { 
 		double current_time = glfwGetTime();
-		rotation += (current_time - old_time) * speed;
+		rotation += (float)((current_time - old_time) * speed);
 		if (rotation >= 360.f) {
 			rotation = 0.f;
 		}
