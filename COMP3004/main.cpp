@@ -19,7 +19,7 @@ typedef struct {
 	double x, y, z;
 } Vertex;
 
-GLuint vao[2], vbo[2];
+GLuint vao[3], vbo[3];
 GLchar *vertexsource, *fragmentsource;
 GLuint vertexshader, fragmentshader;
 GLuint shaderProgram;
@@ -162,16 +162,19 @@ class IScene {
 	public:
 		virtual ~IScene() {}
 		virtual void run() = 0;
+		virtual void interrupt() = 0;
 };
 
 class SceneA: public IScene {
+	private:
+		int running;	
 	public:
 		SceneA() {}
 		void run() {
 			Sphere sphere = Sphere(1, 40, 40);
 
 			//Running stuff
-			int running = GL_TRUE;
+			running = GL_TRUE;
 			double old_time = 0, fps_time = 0;
 			int frame_count = 0;
 			char title_str[255];
@@ -202,19 +205,26 @@ class SceneA: public IScene {
 		
 				sphere.render();
 				glfwSwapBuffers();
-				running = glfwGetWindowParam(GLFW_OPENED);
+				if (!glfwGetWindowParam(GLFW_OPENED)) {
+					running = GL_FALSE;
+				}
 			}
+		}
+		void interrupt() {
+			running = GL_FALSE;
 		}
 };
 
 class SceneC: public IScene {
+	private:
+		int running;
 	public:
 		SceneC() {}
 		void run() {
 			SphereNormals sphere = SphereNormals(1, 40, 40);
 
 			//Running stuff
-			int running = GL_TRUE;
+			running = GL_TRUE;
 			double old_time = 0, fps_time = 0;
 			int frame_count = 0;
 			char title_str[255];
@@ -244,12 +254,19 @@ class SceneC: public IScene {
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
 				sphere.render();
-				glfwSwapBuffers();
-				running = glfwGetWindowParam(GLFW_OPENED);
-		
+				glfwSwapBuffers();	
+				if (!glfwGetWindowParam(GLFW_OPENED)) {
+					running = GL_FALSE;
+				}
 			}
 		}
+		void interrupt() {
+			running = false;
+		}
 };
+
+IScene *currScene;
+IScene * scenes[5];
 
 void GLFWCALL keyHandler(int key, int action) {
 	if (action == GLFW_PRESS) {
@@ -259,11 +276,11 @@ void GLFWCALL keyHandler(int key, int action) {
 		}
 		switch(key) {
 			case 'A': ;
-			case 'a': /*do something*/ break;
+			case 'a': currScene->interrupt(); currScene = scenes[0]; currScene->run(); break;
 			case 'B': ;
 			case 'b': /*do something*/ break;
 			case 'C': ;
-			case 'c': /*do something*/ break;
+			case 'c': currScene->interrupt(); currScene = scenes[2]; currScene->run(); break;
 			case 'D': ;
 			case 'd': /*do something*/ break;
 			case 'E': ;
@@ -290,14 +307,22 @@ int main(void) {
 	glEnable(GL_DEPTH_TEST);
 	//glEnable(GL_LINE_SMOOTH);
 
-	glGenBuffers(2, vbo);
-	glGenVertexArrays(2, vao);
+	glGenBuffers(3, vbo);
+	glGenVertexArrays(3, vao);
 
 	setupShaders();
 
-	/*SceneA sceneA = SceneA();
-	sceneA.run();*/
 
+	SceneA sceneA = SceneA();
+	scenes[0] = &sceneA;
+	/*SceneB sceneB = SceneB();
+	scenes[1] = &sceneB;*/
 	SceneC sceneC = SceneC();
-	sceneC.run();
+	scenes[2] = &sceneC;
+
+	currScene = scenes[0];
+	currScene->run();
+
+	/*SceneC sceneC = SceneC();
+	sceneC.run();*/
 }
