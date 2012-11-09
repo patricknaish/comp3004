@@ -158,6 +158,65 @@ class SphereNormals: public Sphere {
 		}
 };
 
+class Cone: public IModel {
+	protected:
+		vector<Vertex> coneVerts;
+		vector<GLushort> coneIndices;
+	public:
+		Cone(double rad, double height, int sectors) {
+			double theta;
+			double x, y, z;
+
+			Vertex origin = {0,0,0};
+			Vertex peak = {0,0,height};
+			coneVerts.push_back(origin);
+			coneVerts.push_back(peak);
+			coneIndices.push_back(0);
+
+			for (int i = 0; i <= sectors; i++) {
+				theta = 2*M_PI*((double)i/(double)sectors);
+				cout << theta << " " << cos(theta) << " " << sin(theta) << endl;
+				x = (double)(rad * cos(theta));
+				y = (double)(rad * sin(theta));
+				z = 0;
+				Vertex vals = {x, y, z};
+				coneVerts.push_back(vals);
+				coneIndices.push_back(i+2);
+				coneIndices.push_back(i+3);
+				if (i != sectors) {
+					coneIndices.push_back(0);
+				}
+			}
+
+			coneIndices.push_back(1);
+
+			for (int i = 0; i < sectors; i++) {
+				coneIndices.push_back(i+2);
+				coneIndices.push_back(i+3);
+				coneIndices.push_back(1);
+			}
+
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
+			glBufferData(GL_ARRAY_BUFFER, coneVerts.size() * sizeof(Vertex), &coneVerts[0], GL_STATIC_DRAW); 
+
+			glBindVertexArray(vao[1]); 
+			glEnableVertexAttribArray(0);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
+			glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 0, 0);
+		}
+		void render() {
+			glClearColor(0,0,0,0);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+			glBindVertexArray(vao[1]);
+			glDrawElements(GL_TRIANGLES, coneIndices.size(), GL_UNSIGNED_SHORT, &coneIndices[0]);
+			glBindVertexArray(0);
+
+			glFlush();
+		}
+};
+
 class IScene {
 	public:
 		virtual ~IScene() {}
@@ -212,6 +271,56 @@ class SceneA: public IScene {
 		}
 		void interrupt() {
 			running = GL_FALSE;
+		}
+};
+
+class SceneB: public IScene {
+	private:
+		int running;
+	public:
+		SceneB() {}
+		void run() {
+			Cone cone = Cone(1, 1, 40);
+
+			//Running stuff
+			running = GL_TRUE;
+			double old_time = 0, fps_time = 0;
+			int frame_count = 0;
+			char title_str[255];
+			float rotation = 0.f;
+			while( running ) { 
+				double current_time = glfwGetTime();
+				rotation += (float)((current_time - old_time) * speed);
+				if (rotation >= 360.f) {
+					rotation = 0.f;
+				}
+				old_time = current_time;
+				if (current_time - fps_time >= 1) {
+					sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-fps_time));
+					glfwSetWindowTitle(title_str);
+					frame_count = 0;
+					fps_time = current_time;
+				}
+				frame_count++;
+
+				mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
+				mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
+				View = rotate(View, rotation, vec3(1, 1, 1));
+				View = scale(View, vec3(0.7f));
+				mat4 Model = mat4(1.0f);
+				mat4 MVP = Projection * View * Model;
+				GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
+				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+		
+				cone.render();
+				glfwSwapBuffers();	
+				if (!glfwGetWindowParam(GLFW_OPENED)) {
+					running = GL_FALSE;
+				}
+			}
+		}
+		void interrupt() {
+			running = false;
 		}
 };
 
@@ -278,7 +387,7 @@ void GLFWCALL keyHandler(int key, int action) {
 			case 'A': ;
 			case 'a': currScene->interrupt(); currScene = scenes[0]; currScene->run(); break;
 			case 'B': ;
-			case 'b': /*do something*/ break;
+			case 'b': currScene->interrupt(); currScene = scenes[1]; currScene->run(); break;
 			case 'C': ;
 			case 'c': currScene->interrupt(); currScene = scenes[2]; currScene->run(); break;
 			case 'D': ;
@@ -315,8 +424,8 @@ int main(void) {
 
 	SceneA sceneA = SceneA();
 	scenes[0] = &sceneA;
-	/*SceneB sceneB = SceneB();
-	scenes[1] = &sceneB;*/
+	SceneB sceneB = SceneB();
+	scenes[1] = &sceneB;
 	SceneC sceneC = SceneC();
 	scenes[2] = &sceneC;
 
