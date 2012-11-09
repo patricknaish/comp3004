@@ -175,7 +175,6 @@ class Cone: public IModel {
 
 			for (int i = 0; i <= sectors; i++) {
 				theta = 2*M_PI*((double)i/(double)sectors);
-				cout << theta << " " << cos(theta) << " " << sin(theta) << endl;
 				x = (double)(rad * cos(theta));
 				y = (double)(rad * sin(theta));
 				z = 0;
