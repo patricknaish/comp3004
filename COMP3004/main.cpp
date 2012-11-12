@@ -17,12 +17,13 @@ using namespace glm;
 
 typedef struct {
 	double x, y, z;
+	double nx, ny, nz;
 } Vertex;
 
 GLuint vao[4], vbo[4];
 GLchar *vertexsource, *fragmentsource;
 GLuint vertexshader, fragmentshader;
-GLuint shaderProgram;
+GLuint wireframeShaderProgram, normalShaderProgram;
 
 const float speed = 60;
 
@@ -48,26 +49,29 @@ char* filetobuf(char *file) { /* A simple function that will read a file into an
 }
 
 //From Tutorial 2
-void setupShaders() {
+GLuint setupShaders(char *vert, char *frag) {
+	GLuint programID;
 	char text[1000];
     int length;
-    fprintf(stderr, "Set up shaders\n"); /* Allocate and assign two Vertex Buffer Objects to our handle */
-    vertexsource = filetobuf("shader.vert"); /* Read our shaders into the appropriate buffers */
-    fragmentsource = filetobuf("shader.frag");
+    fprintf(stderr, "Set up shaders %s %s\n", vert, frag); /* Allocate and assign two Vertex Buffer Objects to our handle */
+    vertexsource = filetobuf(vert); /* Read our shaders into the appropriate buffers */
+    fragmentsource = filetobuf(frag);
     vertexshader = glCreateShader(GL_VERTEX_SHADER); /* Assign our handles a "name" to new shader objects */
     fragmentshader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(vertexshader, 1, (const GLchar**)&vertexsource, 0); /* Associate the source code buffers with each handle */
     glShaderSource(fragmentshader, 1, (const GLchar**)&fragmentsource, 0);
     glCompileShader(fragmentshader);/* Compile our shader objects */
     glCompileShader(vertexshader);
-    shaderProgram = glCreateProgram();/* Assign our program handle a "name" */
-    glAttachShader(shaderProgram, vertexshader); /* Attach our shaders to our program */
-    glAttachShader(shaderProgram, fragmentshader);
-    glLinkProgram(shaderProgram); /* Link our program */
-    glGetProgramInfoLog(shaderProgram, 1000, &length, text); // Check for errors
+    programID = glCreateProgram();/* Assign our program handle a "name" */
+    glAttachShader(programID, vertexshader); /* Attach our shaders to our program */
+    glAttachShader(programID, fragmentshader);
+	glBindAttribLocation(programID, 0, "position");
+	glBindAttribLocation(programID, 1, "in_normal");
+    glLinkProgram(programID); /* Link our program */
+    glGetProgramInfoLog(programID, 1000, &length, text); // Check for errors
     if(length>0)
         fprintf(stderr, "Validate Shader Program\n%s\n",text );
-    glUseProgram(shaderProgram); /* Set it as being actively used */
+	return programID;
 }
 
 class IModel {
@@ -81,7 +85,7 @@ class IModel {
 */
 class Sphere: public IModel {
 	protected:
-		vector<Vertex> sphereVerts, sphereDisplayNormals, sphereTrueNormals;
+		vector<Vertex> sphereVerts, sphereDisplayNormals;
 		vector<GLushort> sphereIndices;
 		int vboIndex;
 	public:
@@ -90,6 +94,7 @@ class Sphere: public IModel {
 
 			double phi, theta;
 			double x, y, z;
+			double nx, ny, nz; //Normals
 
 			for (int i = 0; i <= slices; i++) {
 				phi = 2*M_PI*((double)i/(double)slices);
@@ -98,16 +103,15 @@ class Sphere: public IModel {
 					x = (double)(rad * sin(theta) * cos(phi)) + centre.x;
 					y = (double)(rad * sin(theta) * sin(phi)) + centre.y;
 					z = (double)(rad * cos(theta)) + centre.z;
-					Vertex vals = {x, y, z};
+					nx = (x - centre.x)/rad;
+					ny = (y - centre.y)/rad;
+					nz = (z - centre.z)/rad;
+					Vertex vals = {x, y, z, nx, ny, nz};
 					sphereVerts.push_back(vals);
 					sphereDisplayNormals.push_back(vals);
 					vals.x -= centre.x;
 					vals.y -= centre.y;
 					vals.z -= centre.z;
-					vals.x /= rad;
-					vals.y /= rad;
-					vals.z /= rad;
-					sphereTrueNormals.push_back(vals);
 					vals.x *= 1.1*rad;
 					vals.y *= 1.1*rad;
 					vals.z *= 1.1*rad;
@@ -128,7 +132,7 @@ class Sphere: public IModel {
 			glBindVertexArray(vao[vboIndex]); 
 			glEnableVertexAttribArray(0);
 			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
-			glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 0, 0);
+			glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, sizeof(Vertex), (const GLvoid*)offsetof(Vertex, x));
 		}
 		void render() {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -142,13 +146,13 @@ class Sphere: public IModel {
 class SphereDisplayNormals: public Sphere {
 	public:
 		SphereDisplayNormals(double rad, Vertex centre, int slices, int sectors, int vboIndex): Sphere(rad, centre, slices, sectors, vboIndex) {
-			glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex+1]);
 			glBufferData(GL_ARRAY_BUFFER, sphereDisplayNormals.size() * sizeof(Vertex), &sphereDisplayNormals[0], GL_STATIC_DRAW); 
 
 			glBindVertexArray(vao[vboIndex+1]);
 			glEnableVertexAttribArray(0);
 			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex+1]);
-			glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 0, 0);
+			glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, sizeof(Vertex), (const GLvoid*)offsetof(Vertex, x));
 		}
 		void render() {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -168,10 +172,18 @@ class SphereDisplayNormals: public Sphere {
 class SphereShaded: public Sphere {
 	public:
 		SphereShaded(double rad, Vertex centre, int slices, int sectors, int vboIndex): Sphere(rad, centre, slices, sectors, vboIndex) {
-
+			glBindVertexArray(vao[vboIndex]);
+			glEnableVertexAttribArray(1);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
+			glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, sizeof(Vertex), (const GLvoid*)offsetof(Vertex, nx));
 		}
 		void render () {
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
+			glBindVertexArray(vao[vboIndex]);
+			glDrawElements(GL_QUAD_STRIP, sphereIndices.size(), GL_UNSIGNED_SHORT, &sphereIndices[0]);
+			glBindVertexArray(0);
 		}
 };
 
@@ -223,7 +235,7 @@ class Cone: public IModel {
 			glBindVertexArray(vao[vboIndex]); 
 			glEnableVertexAttribArray(0);
 			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
-			glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 0, 0);
+			glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, sizeof(Vertex), (const GLvoid*)offsetof(Vertex, x));
 		}
 		void render() {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -250,6 +262,8 @@ class SceneA: public IScene {
 	public:
 		SceneA() {}
 		void run() {
+			glUseProgram(wireframeShaderProgram);
+
 			Vertex centre = {0,0,0};
 
 			Sphere sphere = Sphere(1, centre, 30, 30, 0);
@@ -281,7 +295,7 @@ class SceneA: public IScene {
 				View = scale(View, vec3(0.7f));
 				mat4 Model = mat4(1.0f);
 				mat4 MVP = Projection * View * Model;
-				GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
+				GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
 				glClearColor(0,0,0,0);
@@ -305,6 +319,8 @@ class SceneB: public IScene {
 	public:
 		SceneB() {}
 		void run() {
+			glUseProgram(wireframeShaderProgram);
+
 			Vertex centre = {0,0,0};
 
 			Cone cone = Cone(1, 1, centre, 30, 0);
@@ -336,7 +352,7 @@ class SceneB: public IScene {
 				View = scale(View, vec3(0.7f));
 				mat4 Model = mat4(1.0f);
 				mat4 MVP = Projection * View * Model;
-				GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
+				GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
 				glClearColor(0,0,0,0);
@@ -360,6 +376,8 @@ class SceneC: public IScene {
 	public:
 		SceneC() {}
 		void run() {
+			glUseProgram(wireframeShaderProgram);
+
 			Vertex centre = {0,0,0};
 
 			SphereDisplayNormals sphere = SphereDisplayNormals(1, centre, 30, 30, 0);
@@ -391,7 +409,7 @@ class SceneC: public IScene {
 				View = scale(View, vec3(0.7f));
 				mat4 Model = mat4(1.0f);
 				mat4 MVP = Projection * View * Model;
-				GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
+				GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
 				glClearColor(0,0,0,0);
@@ -415,9 +433,11 @@ class SceneD: public IScene {
 	public:
 		SceneD() {}
 		void run() {
+			glUseProgram(normalShaderProgram);
+
 			Vertex centre = {0,0,0};
 
-			SphereShaded sphere = SphereShaded(1, centre, 30, 30, 0);
+			SphereShaded sphere = SphereShaded(1, centre, 50, 50, 0);
 
 			//Running stuff
 			running = GL_TRUE;
@@ -446,8 +466,20 @@ class SceneD: public IScene {
 				View = scale(View, vec3(0.7f));
 				mat4 Model = mat4(1.0f);
 				mat4 MVP = Projection * View * Model;
-				GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
+				GLuint MatrixID = glGetUniformLocation(normalShaderProgram, "MVP");
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+
+				vec4 LightV = vec4(1.f, 1.f, 1.f, 1.f);
+				GLuint LightVID = glGetUniformLocation(normalShaderProgram, "LightV");
+				glUniform4fv(LightVID, 1, &LightV[0]);
+				
+				vec4 LightC = vec4(0.7f, 0.7f, 0.7f, 1.f);
+				GLuint LightCID = glGetUniformLocation(normalShaderProgram, "LightC");
+				glUniform4fv(LightCID, 1, &LightC[0]);
+				
+				vec4 Material = vec4(1.f, 0.f, 0.f, 1.f);
+				GLuint MaterialID = glGetUniformLocation(normalShaderProgram, "Material");
+				glUniform4fv(MaterialID, 1, &Material[0]);
 		
 				glClearColor(0,0,0,0);
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -470,6 +502,8 @@ class SceneE: public IScene {
 	public:
 		SceneE() {}
 		void run() {
+			glUseProgram(wireframeShaderProgram);
+
 			Vertex sphere1Centre = {0,1,0};
 			Sphere sphere1 = Sphere(0.3, sphere1Centre, 30, 30, 0);
 
@@ -509,7 +543,7 @@ class SceneE: public IScene {
 				View = scale(View, vec3(0.7f));
 				mat4 Model = mat4(1.0f);
 				mat4 MVP = Projection * View * Model;
-				GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
+				GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
 				glClearColor(0,0,0,0);
@@ -568,17 +602,24 @@ int main(void) {
 		exit(EXIT_FAILURE);
 	}
 	glewInit();
+	if (glewIsSupported("GL_VERSION_4_2"))
+		printf("Ready for OpenGL 4.2\n\n");
+	else {
+		printf("OpenGL 4.2 not supported\n\n");
+		exit(1);
+	}
+
 	glfwSetKeyCallback(keyHandler);
 	glEnable(GL_DEPTH_TEST);
 	//glEnable(GL_LINE_SMOOTH);
 	//glEnable(GL_CULL_FACE);
-	//glDepthFunc(GL_LESS);
+	glDepthFunc(GL_LESS);
 
 	glGenBuffers(4, vbo);
 	glGenVertexArrays(4, vao);
 
-	setupShaders();
-
+	wireframeShaderProgram = setupShaders("wireshader.vert", "wireshader.frag");
+	normalShaderProgram = setupShaders("normshader.vert", "normshader.frag");
 
 	SceneA sceneA = SceneA();
 	scenes[0] = &sceneA;

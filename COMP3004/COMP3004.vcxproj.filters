@@ -20,10 +20,16 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shader.vert">
+    <None Include="normshader.frag">
       <Filter>Source Files</Filter>
     </None>
-    <None Include="shader.frag">
+    <None Include="normshader.vert">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="wireshader.frag">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="wireshader.vert">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>
