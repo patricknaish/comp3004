@@ -19,7 +19,7 @@ typedef struct {
 	double x, y, z;
 } Vertex;
 
-GLuint vao[3], vbo[3];
+GLuint vao[4], vbo[4];
 GLchar *vertexsource, *fragmentsource;
 GLuint vertexshader, fragmentshader;
 GLuint shaderProgram;
@@ -47,7 +47,7 @@ char* filetobuf(char *file) { /* A simple function that will read a file into an
     return buf; /* Return the buffer */
 }
 
-//Modified from Tutorial 2
+//From Tutorial 2
 void setupShaders() {
 	char text[1000];
     int length;
@@ -76,12 +76,18 @@ class IModel {
 		virtual void render() = 0;
 };
 
+/*
+ * Sphere generation code adapted from http://stackoverflow.com/questions/8959338/draw-a-sphere-with-opengl
+*/
 class Sphere: public IModel {
 	protected:
 		vector<Vertex> sphereVerts, sphereNormals;
 		vector<GLushort> sphereIndices;
+		int vboIndex;
 	public:
-		Sphere(double rad, int slices, int sectors) {
+		Sphere(double rad, Vertex centre, int slices, int sectors, int vboIndex) {
+			this->vboIndex = vboIndex;
+
 			double phi, theta;
 			double x, y, z;
 
@@ -89,72 +95,77 @@ class Sphere: public IModel {
 				phi = 2*M_PI*((double)i/(double)slices);
 				for (int j = 0; j <= sectors; j++) {
 					theta = M_PI * ((double)j/(double)sectors);
-					x = (double)(rad * sin(theta) * cos(phi));
-					y = (double)(rad * sin(theta) * sin(phi));
-					z = (double)(rad * cos(theta));
+					x = (double)(rad * sin(theta) * cos(phi)) + centre.x;
+					y = (double)(rad * sin(theta) * sin(phi)) + centre.y;
+					z = (double)(rad * cos(theta)) + centre.z;
 					Vertex vals = {x, y, z};
 					sphereVerts.push_back(vals);
-					vals.x /= rad;
-					vals.y /= rad;
-					vals.z /= rad;
 					sphereNormals.push_back(vals);
+					vals.x -= centre.x;
+					vals.y -= centre.y;
+					vals.z -= centre.z;
 					vals.x *= 1.1;
 					vals.y *= 1.1;
 					vals.z *= 1.1;
+					vals.x += centre.x;
+					vals.y += centre.y;
+					vals.z += centre.z;
 					sphereNormals.push_back(vals);
 					sphereIndices.push_back(i * sectors + j);
-					sphereIndices.push_back((i+1) * sectors + j+1);
+					if ((i+1) * sectors + j+1 < (slices+1) * (sectors+1)) {
+						sphereIndices.push_back((i+1) * sectors + j+1);
+					}
 				}
 			}
 
-			glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
 			glBufferData(GL_ARRAY_BUFFER, sphereVerts.size() * sizeof(Vertex), &sphereVerts[0], GL_STATIC_DRAW); 
 
-			glBindVertexArray(vao[0]); 
+			glBindVertexArray(vao[vboIndex]); 
 			glEnableVertexAttribArray(0);
-			glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
 			glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 0, 0);
 		}
 		void render() {
-			glClearColor(0,0,0,0);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			//glClearColor(0,0,0,0);
+			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-			glBindVertexArray(vao[0]);
+			glBindVertexArray(vao[vboIndex]);
 			glDrawElements(GL_QUAD_STRIP, sphereIndices.size(), GL_UNSIGNED_SHORT, &sphereIndices[0]);
 			glBindVertexArray(0);
 
-			glFlush();
+			//glFlush();
 		}
 };
 
 class SphereNormals: public Sphere {
 	public:
-		SphereNormals(double rad, int slices, int sectors): Sphere(rad, slices, sectors) {
+		SphereNormals(double rad, Vertex centre, int slices, int sectors, int vboIndex): Sphere(rad, centre, slices, sectors, vboIndex) {
 			glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
 			glBufferData(GL_ARRAY_BUFFER, sphereNormals.size() * sizeof(Vertex), &sphereNormals[0], GL_STATIC_DRAW); 
 
-			glBindVertexArray(vao[1]);
+			glBindVertexArray(vao[vboIndex+1]);
 			glEnableVertexAttribArray(0);
-			glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex+1]);
 			glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 0, 0);
 		}
 		void render() {
-			glClearColor(0,0,0,0);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			//glClearColor(0,0,0,0);
+			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-			glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-			glBindVertexArray(vao[0]);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
+			glBindVertexArray(vao[vboIndex]);
 			glDrawElements(GL_QUAD_STRIP, sphereIndices.size(), GL_UNSIGNED_SHORT, &sphereIndices[0]);
 			glBindVertexArray(0);
 
-			glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
-			glBindVertexArray(vao[1]);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex+1]);
+			glBindVertexArray(vao[vboIndex+1]);
 			glDrawArrays(GL_LINES, 0, sphereNormals.size());
 			glBindVertexArray(0);
 
-			glFlush();
+			//glFlush();
 		}
 };
 
@@ -162,26 +173,31 @@ class Cone: public IModel {
 	protected:
 		vector<Vertex> coneVerts;
 		vector<GLushort> coneIndices;
+		int vboIndex;
 	public:
-		Cone(double rad, double height, int sectors) {
+		Cone(double rad, double height, Vertex centre, int sectors, int vboIndex) {
+			this->vboIndex = vboIndex;
+
 			double theta;
 			double x, y, z;
 
-			Vertex origin = {0,0,0};
-			Vertex peak = {0,0,height};
+			Vertex origin = centre;
+			Vertex peak = {centre.x,centre.y,centre.z+height};
 			coneVerts.push_back(origin);
 			coneVerts.push_back(peak);
 			coneIndices.push_back(0);
 
 			for (int i = 0; i <= sectors; i++) {
 				theta = 2*M_PI*((double)i/(double)sectors);
-				x = (double)(rad * cos(theta));
-				y = (double)(rad * sin(theta));
-				z = 0;
+				x = (double)(rad * cos(theta)) + centre.x;
+				y = (double)(rad * sin(theta)) + centre.y;
+				z = centre.z;
 				Vertex vals = {x, y, z};
 				coneVerts.push_back(vals);
 				coneIndices.push_back(i+2);
-				coneIndices.push_back(i+3);
+				if (i+3 <= sectors) {
+					coneIndices.push_back(i+3);
+				}
 				if (i != sectors) {
 					coneIndices.push_back(0);
 				}
@@ -195,24 +211,24 @@ class Cone: public IModel {
 				coneIndices.push_back(1);
 			}
 
-			glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
 			glBufferData(GL_ARRAY_BUFFER, coneVerts.size() * sizeof(Vertex), &coneVerts[0], GL_STATIC_DRAW); 
 
-			glBindVertexArray(vao[1]); 
+			glBindVertexArray(vao[vboIndex]); 
 			glEnableVertexAttribArray(0);
-			glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
 			glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 0, 0);
 		}
 		void render() {
-			glClearColor(0,0,0,0);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			//glClearColor(0,0,0,0);
+			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-			glBindVertexArray(vao[1]);
+			glBindVertexArray(vao[vboIndex]);
 			glDrawElements(GL_TRIANGLES, coneIndices.size(), GL_UNSIGNED_SHORT, &coneIndices[0]);
 			glBindVertexArray(0);
 
-			glFlush();
+			//glFlush();
 		}
 };
 
@@ -223,13 +239,18 @@ class IScene {
 		virtual void interrupt() = 0;
 };
 
+/*
+ * Camera manipulations adapted from http://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/
+ */
 class SceneA: public IScene {
 	private:
 		int running;	
 	public:
 		SceneA() {}
 		void run() {
-			Sphere sphere = Sphere(1, 40, 40);
+			Vertex centre = {0,0,0};
+
+			Sphere sphere = Sphere(1, centre, 30, 30, 0);
 
 			//Running stuff
 			running = GL_TRUE;
@@ -261,7 +282,10 @@ class SceneA: public IScene {
 				GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
+				glClearColor(0,0,0,0);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 				sphere.render();
+				glFlush();
 				glfwSwapBuffers();
 				if (!glfwGetWindowParam(GLFW_OPENED)) {
 					running = GL_FALSE;
@@ -279,7 +303,9 @@ class SceneB: public IScene {
 	public:
 		SceneB() {}
 		void run() {
-			Cone cone = Cone(1, 1, 40);
+			Vertex centre = {0,0,0};
+
+			Cone cone = Cone(1, 1, centre, 30, 0);
 
 			//Running stuff
 			running = GL_TRUE;
@@ -311,7 +337,10 @@ class SceneB: public IScene {
 				GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
+				glClearColor(0,0,0,0);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 				cone.render();
+				glFlush();
 				glfwSwapBuffers();	
 				if (!glfwGetWindowParam(GLFW_OPENED)) {
 					running = GL_FALSE;
@@ -329,7 +358,9 @@ class SceneC: public IScene {
 	public:
 		SceneC() {}
 		void run() {
-			SphereNormals sphere = SphereNormals(1, 40, 40);
+			Vertex centre = {0,0,0};
+
+			SphereNormals sphere = SphereNormals(1, centre, 30, 30, 0);
 
 			//Running stuff
 			running = GL_TRUE;
@@ -361,7 +392,76 @@ class SceneC: public IScene {
 				GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
+				glClearColor(0,0,0,0);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 				sphere.render();
+				glFlush();
+				glfwSwapBuffers();	
+				if (!glfwGetWindowParam(GLFW_OPENED)) {
+					running = GL_FALSE;
+				}
+			}
+		}
+		void interrupt() {
+			running = false;
+		}
+};
+
+class SceneE: public IScene {
+	private:
+		int running;
+	public:
+		SceneE() {}
+		void run() {
+			Vertex sphere1Centre = {0,1,0};
+			Sphere sphere1 = Sphere(0.3, sphere1Centre, 30, 30, 0);
+
+			Vertex sphere2Centre = {0,-1,0};
+			Sphere sphere2 = Sphere(0.3, sphere2Centre, 30, 30, 1);
+
+			Vertex cone1Centre = {1,0,0};
+			Cone cone1 = Cone(0.3, 0.3, cone1Centre, 30, 2);
+
+			Vertex cone2Centre = {-1,0,0};
+			Cone cone2 = Cone(0.3, 0.3, cone2Centre, 30, 3);
+
+			//Running stuff
+			running = GL_TRUE;
+			double old_time = 0, fps_time = 0;
+			int frame_count = 0;
+			char title_str[255];
+			float rotation = 0.f;
+			while( running ) { 
+				double current_time = glfwGetTime();
+				rotation += (float)((current_time - old_time) * speed);
+				if (rotation >= 360.f) {
+					rotation = 0.f;
+				}
+				old_time = current_time;
+				if (current_time - fps_time >= 1) {
+					sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-fps_time));
+					glfwSetWindowTitle(title_str);
+					frame_count = 0;
+					fps_time = current_time;
+				}
+				frame_count++;
+
+				mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
+				mat4 View = lookAt(vec3(0,3,1), vec3(0,0,0), vec3(0,1,0));
+				View = rotate(View, rotation, vec3(1, 1, 1));
+				View = scale(View, vec3(0.7f));
+				mat4 Model = mat4(1.0f);
+				mat4 MVP = Projection * View * Model;
+				GLuint MatrixID = glGetUniformLocation(shaderProgram, "MVP");
+				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+		
+				glClearColor(0,0,0,0);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				sphere1.render();
+				sphere2.render();
+				cone1.render();
+				cone2.render();
+				glFlush();
 				glfwSwapBuffers();	
 				if (!glfwGetWindowParam(GLFW_OPENED)) {
 					running = GL_FALSE;
@@ -392,7 +492,7 @@ void GLFWCALL keyHandler(int key, int action) {
 			case 'D': ;
 			case 'd': /*do something*/ break;
 			case 'E': ;
-			case 'e': /*do something*/ break;
+			case 'e': currScene->interrupt(); currScene = scenes[4]; currScene->run(); break;
 			case GLFW_KEY_UP: ; break;
 			case GLFW_KEY_DOWN: ; break;
 			case GLFW_KEY_RIGHT: ; break;
@@ -414,9 +514,11 @@ int main(void) {
 	glfwSetKeyCallback(keyHandler);
 	glEnable(GL_DEPTH_TEST);
 	//glEnable(GL_LINE_SMOOTH);
+	//glEnable(GL_CULL_FACE);
+	//glDepthFunc(GL_LESS);
 
-	glGenBuffers(3, vbo);
-	glGenVertexArrays(3, vao);
+	glGenBuffers(4, vbo);
+	glGenVertexArrays(4, vao);
 
 	setupShaders();
 
@@ -428,9 +530,9 @@ int main(void) {
 	SceneC sceneC = SceneC();
 	scenes[2] = &sceneC;
 
+	SceneE sceneE = SceneE();
+	scenes[4] = &sceneE;
+
 	currScene = scenes[0];
 	currScene->run();
-
-	/*SceneC sceneC = SceneC();
-	sceneC.run();*/
 }
