@@ -11,6 +11,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/rotate_vector.hpp>
+#include <SOIL.h>
 
 using namespace std; 
 using namespace glm;
@@ -45,6 +46,7 @@ char* filetobuf(char *file) { /* A simple function that will read a file into an
     fread(buf, length, 1, fptr); /* Read the contents of the file in to the buffer */
     fclose(fptr); /* Close the file */
     buf[length] = 0; /* Null terminator */
+	printf("%s read successfully\n", file);
     return buf; /* Return the buffer */
 }
 
@@ -53,7 +55,7 @@ GLuint setupShaders(char *vert, char *frag) {
 	GLuint programID;
 	char text[1000];
     int length;
-    fprintf(stderr, "Set up shaders %s %s\n", vert, frag); /* Allocate and assign two Vertex Buffer Objects to our handle */
+    fprintf(stderr, "Setting up shaders...\n"); /* Allocate and assign two Vertex Buffer Objects to our handle */
     vertexsource = filetobuf(vert); /* Read our shaders into the appropriate buffers */
     fragmentsource = filetobuf(frag);
     vertexshader = glCreateShader(GL_VERTEX_SHADER); /* Assign our handles a "name" to new shader objects */
@@ -70,7 +72,7 @@ GLuint setupShaders(char *vert, char *frag) {
     glLinkProgram(programID); /* Link our program */
     glGetProgramInfoLog(programID, 1000, &length, text); // Check for errors
     if(length>0)
-        fprintf(stderr, "Validate Shader Program\n%s\n",text );
+        fprintf(stderr, "Validating shader programs...\n%s\n",text );
 	return programID;
 }
 
@@ -593,20 +595,32 @@ void GLFWCALL keyHandler(int key, int action) {
 }
 
 int main(void) {
+	printf("Initialising... \n");
 	if (!glfwInit()) {
+		printf("Could not initialise GLFW\n");
 		exit(EXIT_FAILURE);
+	}
+	else {
+		printf("Initialised GLFW\n");
 	}
 	glfwOpenWindowHint(GLFW_WINDOW_NO_RESIZE, GL_TRUE);
 	if (!glfwOpenWindow(600,600,0,0,0,0,0,0,GLFW_WINDOW)) {
+		printf("Could not open window");
 		glfwTerminate();
 		exit(EXIT_FAILURE);
 	}
-	glewInit();
+	if (glewInit() != GLEW_OK) {
+		printf("Could not initialise GLEW\n");
+		exit(EXIT_FAILURE);
+	}
+	else {
+		printf("Initialised GLEW\n");
+	}
 	if (glewIsSupported("GL_VERSION_4_2"))
 		printf("Ready for OpenGL 4.2\n\n");
 	else {
 		printf("OpenGL 4.2 not supported\n\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	glfwSetKeyCallback(keyHandler);
@@ -617,10 +631,18 @@ int main(void) {
 
 	glGenBuffers(4, vbo);
 	glGenVertexArrays(4, vao);
+	if (glGetError() != 0) {
+		printf("Could not create vbos or vaos\n");
+		exit(EXIT_FAILURE);
+	}
+	else {
+		printf("Generated vbos and vaos\n\n");
+	}
 
 	wireframeShaderProgram = setupShaders("wireshader.vert", "wireshader.frag");
 	normalShaderProgram = setupShaders("normshader.vert", "normshader.frag");
 
+	printf("Creating scenes...\n");
 	SceneA sceneA = SceneA();
 	scenes[0] = &sceneA;
 	SceneB sceneB = SceneB();
@@ -631,6 +653,7 @@ int main(void) {
 	scenes[3] = &sceneD;
 	SceneE sceneE = SceneE();
 	scenes[4] = &sceneE;
+	printf("Created scenes\nRunning scene A\n\n");
 
 	currScene = scenes[0];
 	currScene->run();
