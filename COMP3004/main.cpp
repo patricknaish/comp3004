@@ -270,15 +270,22 @@ class SceneA: public IScene {
 
 			Sphere sphere = Sphere(1, centre, 30, 30, 0);
 
+			mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
+			mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
+			View = scale(View, vec3(0.7f));
+			mat4 Model = mat4(1.0f);
+			mat4 MVP;
+			GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
+
 			//Running stuff
 			running = GL_TRUE;
-			double old_time = 0, fps_time = 0;
+			double old_time = 0, fps_time = 0, current_time = 0;
 			int frame_count = 0;
 			char title_str[255];
 			float rotation = 0.f;
 			while( running ) { 
-				double current_time = glfwGetTime();
-				rotation += (float)((current_time - old_time) * speed);
+				current_time = glfwGetTime();
+				rotation = (float)((current_time - old_time) * speed);
 				if (rotation >= 360.f) {
 					rotation = 0.f;
 				}
@@ -291,13 +298,9 @@ class SceneA: public IScene {
 				}
 				frame_count++;
 
-				mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
-				mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
+				
 				View = rotate(View, rotation, vec3(1, 1, 1));
-				View = scale(View, vec3(0.7f));
-				mat4 Model = mat4(1.0f);
-				mat4 MVP = Projection * View * Model;
-				GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
+				MVP = Projection * View * Model;
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
 				glClearColor(0,0,0,0);
@@ -327,15 +330,22 @@ class SceneB: public IScene {
 
 			Cone cone = Cone(1, 1, centre, 30, 0);
 
+			mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
+			mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
+			View = scale(View, vec3(0.7f));
+			mat4 Model = mat4(1.0f);
+			mat4 MVP;
+			GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
+
 			//Running stuff
 			running = GL_TRUE;
-			double old_time = 0, fps_time = 0;
+			double old_time = 0, fps_time = 0, current_time = 0;
 			int frame_count = 0;
 			char title_str[255];
 			float rotation = 0.f;
 			while( running ) { 
-				double current_time = glfwGetTime();
-				rotation += (float)((current_time - old_time) * speed);
+				current_time = glfwGetTime();
+				rotation = (float)((current_time - old_time) * speed);
 				if (rotation >= 360.f) {
 					rotation = 0.f;
 				}
@@ -348,13 +358,9 @@ class SceneB: public IScene {
 				}
 				frame_count++;
 
-				mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
-				mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
+				
 				View = rotate(View, rotation, vec3(1, 1, 1));
-				View = scale(View, vec3(0.7f));
-				mat4 Model = mat4(1.0f);
-				mat4 MVP = Projection * View * Model;
-				GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
+				MVP = Projection * View * Model;
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
 				glClearColor(0,0,0,0);
@@ -384,15 +390,22 @@ class SceneC: public IScene {
 
 			SphereDisplayNormals sphere = SphereDisplayNormals(1, centre, 30, 30, 0);
 
+			mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
+			mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
+			View = scale(View, vec3(0.7f));
+			mat4 Model = mat4(1.0f);
+			mat4 MVP;
+			GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
+
 			//Running stuff
 			running = GL_TRUE;
-			double old_time = 0, fps_time = 0;
+			double old_time = 0, fps_time = 0, current_time = 0;
 			int frame_count = 0;
 			char title_str[255];
 			float rotation = 0.f;
 			while( running ) { 
-				double current_time = glfwGetTime();
-				rotation += (float)((current_time - old_time) * speed);
+				current_time = glfwGetTime();
+				rotation = (float)((current_time - old_time) * speed);
 				if (rotation >= 360.f) {
 					rotation = 0.f;
 				}
@@ -405,13 +418,9 @@ class SceneC: public IScene {
 				}
 				frame_count++;
 
-				mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
-				mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
+				
 				View = rotate(View, rotation, vec3(1, 1, 1));
-				View = scale(View, vec3(0.7f));
-				mat4 Model = mat4(1.0f);
-				mat4 MVP = Projection * View * Model;
-				GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
+				MVP = Projection * View * Model;
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
 				glClearColor(0,0,0,0);
@@ -439,17 +448,36 @@ class SceneD: public IScene {
 
 			Vertex centre = {0,0,0};
 
-			SphereShaded sphere = SphereShaded(1, centre, 50, 50, 0);
+			SphereShaded sphere = SphereShaded(1, centre, 15, 15, 0);
+
+			mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
+			mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
+			View = scale(View, vec3(0.7f));
+			mat4 Model = mat4(1.0f);
+			mat4 MVP;
+			GLuint MatrixID = glGetUniformLocation(normalShaderProgram, "MVP");
+
+			vec4 LightV = vec4(1.f, 1.f, 1.f, 1.f);
+			GLuint LightVID = glGetUniformLocation(normalShaderProgram, "LightV");
+			glUniform4fv(LightVID, 1, &LightV[0]);
+				
+			vec4 LightC = vec4(0.7f, 0.7f, 0.7f, 1.f);
+			GLuint LightCID = glGetUniformLocation(normalShaderProgram, "LightC");
+			glUniform4fv(LightCID, 1, &LightC[0]);
+				
+			vec4 Material = vec4(1.f, 0.f, 0.f, 1.f);
+			GLuint MaterialID = glGetUniformLocation(normalShaderProgram, "Material");
+			glUniform4fv(MaterialID, 1, &Material[0]);
 
 			//Running stuff
 			running = GL_TRUE;
-			double old_time = 0, fps_time = 0;
+			double old_time = 0, fps_time = 0, current_time = 0;
 			int frame_count = 0;
 			char title_str[255];
 			float rotation = 0.f;
-			while( running ) { 
-				double current_time = glfwGetTime();
-				rotation += (float)((current_time - old_time) * speed);
+			while(running) { 
+				current_time = glfwGetTime();
+				rotation = (float)((current_time - old_time) * speed);
 				if (rotation >= 360.f) {
 					rotation = 0.f;
 				}
@@ -462,26 +490,9 @@ class SceneD: public IScene {
 				}
 				frame_count++;
 
-				mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
-				mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
 				View = rotate(View, rotation, vec3(1, 1, 1));
-				View = scale(View, vec3(0.7f));
-				mat4 Model = mat4(1.0f);
-				mat4 MVP = Projection * View * Model;
-				GLuint MatrixID = glGetUniformLocation(normalShaderProgram, "MVP");
+				MVP = Projection * View * Model;
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-
-				vec4 LightV = vec4(1.f, 1.f, 1.f, 1.f);
-				GLuint LightVID = glGetUniformLocation(normalShaderProgram, "LightV");
-				glUniform4fv(LightVID, 1, &LightV[0]);
-				
-				vec4 LightC = vec4(0.7f, 0.7f, 0.7f, 1.f);
-				GLuint LightCID = glGetUniformLocation(normalShaderProgram, "LightC");
-				glUniform4fv(LightCID, 1, &LightC[0]);
-				
-				vec4 Material = vec4(1.f, 0.f, 0.f, 1.f);
-				GLuint MaterialID = glGetUniformLocation(normalShaderProgram, "Material");
-				glUniform4fv(MaterialID, 1, &Material[0]);
 		
 				glClearColor(0,0,0,0);
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -518,15 +529,22 @@ class SceneE: public IScene {
 			Vertex cone2Centre = {-1,0,0};
 			Cone cone2 = Cone(0.2, 0.5, cone2Centre, 30, 3);
 
+			mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
+			mat4 View = lookAt(vec3(0,3,1), vec3(0,0,0), vec3(0,1,0));
+			View = scale(View, vec3(0.7f));
+			mat4 Model = mat4(1.0f);
+			mat4 MVP;
+			GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
+
 			//Running stuff
 			running = GL_TRUE;
 			double old_time = 0, fps_time = 0;
 			int frame_count = 0;
 			char title_str[255];
 			float rotation = 0.f;
-			while( running ) { 
+			while(running) { 
 				double current_time = glfwGetTime();
-				rotation += (float)((current_time - old_time) * speed);
+				rotation = (float)((current_time - old_time) * speed);
 				if (rotation >= 360.f) {
 					rotation = 0.f;
 				}
@@ -539,13 +557,9 @@ class SceneE: public IScene {
 				}
 				frame_count++;
 
-				mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
-				mat4 View = lookAt(vec3(0,3,1), vec3(0,0,0), vec3(0,1,0));
 				View = rotate(View, rotation, vec3(1, 1, 1));
-				View = scale(View, vec3(0.7f));
-				mat4 Model = mat4(1.0f);
-				mat4 MVP = Projection * View * Model;
-				GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
+				
+				MVP = Projection * View * Model;
 				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
 				glClearColor(0,0,0,0);
