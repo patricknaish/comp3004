@@ -127,7 +127,7 @@ class Sphere: public IModel {
 					}
 				}
 			}
-
+			
 			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
 			glBufferData(GL_ARRAY_BUFFER, sphereVerts.size() * sizeof(Vertex), &sphereVerts[0], GL_STATIC_DRAW); 
 
@@ -616,8 +616,8 @@ int main(void) {
 	else {
 		printf("Initialised GLEW\n");
 	}
-	if (glewIsSupported("GL_VERSION_4_2"))
-		printf("Ready for OpenGL 4.2\n\n");
+	if (glewIsSupported("GL_VERSION_3_2"))
+		printf("Ready for OpenGL 3.2\n\n");
 	else {
 		printf("OpenGL 4.2 not supported\n\n");
 		exit(EXIT_FAILURE);
