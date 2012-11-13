@@ -90,9 +90,13 @@ class Sphere: public IModel {
 		vector<Vertex> sphereVerts, sphereDisplayNormals;
 		vector<GLushort> sphereIndices;
 		int vboIndex;
+		Vertex centre;
+		double rad;
 	public:
 		Sphere(double rad, Vertex centre, int slices, int sectors, int vboIndex) {
 			this->vboIndex = vboIndex;
+			this->centre = centre;
+			this->rad = rad;
 
 			double phi, theta;
 			double x, y, z;
@@ -142,6 +146,28 @@ class Sphere: public IModel {
 			glBindVertexArray(vao[vboIndex]);
 			glDrawElements(GL_QUAD_STRIP, sphereIndices.size(), GL_UNSIGNED_SHORT, &sphereIndices[0]);
 			glBindVertexArray(0);
+		}
+		void translate(double x, double y, double z) {
+			for (size_t i = 0; i < sphereVerts.size(); i++) {
+				sphereVerts[i].x += x;
+				sphereVerts[i].y += y;
+				sphereVerts[i].z += z;
+				sphereVerts[i].nx = (sphereVerts[i].x - centre.x)/rad;
+				sphereVerts[i].ny = (sphereVerts[i].y - centre.y)/rad;
+				sphereVerts[i].nz = (sphereVerts[i].z - centre.z)/rad;
+			}
+			for (size_t i = 0; i < sphereDisplayNormals.size(); i++) {
+				sphereDisplayNormals[i].x += x;
+				sphereDisplayNormals[i].y += y;
+				sphereDisplayNormals[i].z += z;
+			}
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
+			glBufferData(GL_ARRAY_BUFFER, sphereVerts.size() * sizeof(Vertex), &sphereVerts[0], GL_STATIC_DRAW); 
+
+			glBindVertexArray(vao[vboIndex]); 
+			glEnableVertexAttribArray(0);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
+			glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, sizeof(Vertex), (const GLvoid*)offsetof(Vertex, x));
 		}
 };
 
@@ -245,6 +271,20 @@ class Cone: public IModel {
 			glBindVertexArray(vao[vboIndex]);
 			glDrawElements(GL_TRIANGLES, coneIndices.size(), GL_UNSIGNED_SHORT, &coneIndices[0]);
 			glBindVertexArray(0);
+		}
+		void translate(double x, double y, double z) {
+			for (size_t i = 0; i < coneVerts.size(); i++) {
+				coneVerts[i].x += x;
+				coneVerts[i].y += y;
+				coneVerts[i].z += z;
+			}
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
+			glBufferData(GL_ARRAY_BUFFER, coneVerts.size() * sizeof(Vertex), &coneVerts[0], GL_STATIC_DRAW); 
+
+			glBindVertexArray(vao[vboIndex]); 
+			glEnableVertexAttribArray(0);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[vboIndex]);
+			glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, sizeof(Vertex), (const GLvoid*)offsetof(Vertex, x));
 		}
 };
 
@@ -438,6 +478,10 @@ class SceneC: public IScene {
 		}
 };
 
+/*
+ * Normal interpolated shading
+ * Only 10 polygons are used in each direction to make the shading look more interesting
+ */
 class SceneD: public IScene {
 	private:
 		int running;
@@ -448,7 +492,7 @@ class SceneD: public IScene {
 
 			Vertex centre = {0,0,0};
 
-			SphereShaded sphere = SphereShaded(1, centre, 15, 15, 0);
+			SphereShaded sphere = SphereShaded(1, centre, 10, 10, 0);
 
 			mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
 			mat4 View = lookAt(vec3(0,2,1), vec3(0,0,0), vec3(0,1,0));
@@ -457,7 +501,7 @@ class SceneD: public IScene {
 			mat4 MVP;
 			GLuint MatrixID = glGetUniformLocation(normalShaderProgram, "MVP");
 
-			vec4 LightV = vec4(1.f, 1.f, 1.f, 1.f);
+			vec4 LightV = vec4(0.8f, 0.8f, 0.8f, 1.f);
 			GLuint LightVID = glGetUniformLocation(normalShaderProgram, "LightV");
 			glUniform4fv(LightVID, 1, &LightV[0]);
 				
@@ -518,36 +562,46 @@ class SceneE: public IScene {
 			glUseProgram(wireframeShaderProgram);
 
 			Vertex sphere1Centre = {0,1,0};
-			Sphere sphere1 = Sphere(0.3, sphere1Centre, 30, 30, 0);
+			Sphere sphere1 = Sphere(0.3, sphere1Centre, 20, 20, 0);
 
 			Vertex sphere2Centre = {0,-1,0};
-			Sphere sphere2 = Sphere(0.4, sphere2Centre, 30, 30, 1);
+			Sphere sphere2 = Sphere(0.4, sphere2Centre, 20, 20, 1);
 
 			Vertex cone1Centre = {1,0,0};
-			Cone cone1 = Cone(0.3, 0.3, cone1Centre, 30, 2);
+			Cone cone1 = Cone(0.3, 0.3, cone1Centre, 20, 2);
 
 			Vertex cone2Centre = {-1,0,0};
-			Cone cone2 = Cone(0.2, 0.5, cone2Centre, 30, 3);
+			Cone cone2 = Cone(0.2, 0.5, cone2Centre, 20, 3);
 
 			mat4 Projection = perspective(45.0f, 1.0f, 0.1f, 100.0f);
-			mat4 View = lookAt(vec3(0,3,1), vec3(0,0,0), vec3(0,1,0));
-			View = scale(View, vec3(0.7f));
+			mat4 View = lookAt(vec3(0,3,3), vec3(0,0,0), vec3(0,0,3));
+			View = scale(View, vec3(0.8f));
 			mat4 Model = mat4(1.0f);
-			mat4 MVP;
+			mat4 MVP = Projection * View * Model;
 			GLuint MatrixID = glGetUniformLocation(wireframeShaderProgram, "MVP");
+			glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 
 			//Running stuff
 			running = GL_TRUE;
 			double old_time = 0, fps_time = 0;
 			int frame_count = 0;
 			char title_str[255];
-			float rotation = 0.f;
+			float rotation = 0.f, totalRotation = 0.f;
+			double translation = 0;
 			while(running) { 
 				double current_time = glfwGetTime();
 				rotation = (float)((current_time - old_time) * speed);
-				if (rotation >= 360.f) {
-					rotation = 0.f;
+				totalRotation += rotation/100;
+				if (totalRotation >= 360.f) {
+					totalRotation -= 360.f;
 				}
+				
+				translation = sin(totalRotation)/100;
+				sphere1.translate(translation,0,0);
+				sphere2.translate(0,translation,0);
+				cone1.translate(0,0,translation);
+				cone2.translate(translation, 0, translation/2);
+
 				old_time = current_time;
 				if (current_time - fps_time >= 1) {
 					sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-fps_time));
@@ -556,11 +610,6 @@ class SceneE: public IScene {
 					fps_time = current_time;
 				}
 				frame_count++;
-
-				View = rotate(View, rotation, vec3(1, 1, 1));
-				
-				MVP = Projection * View * Model;
-				glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
 				glClearColor(0,0,0,0);
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -570,6 +619,7 @@ class SceneE: public IScene {
 				cone2.render();
 				glFlush();
 				glfwSwapBuffers();	
+
 				if (!glfwGetWindowParam(GLFW_OPENED)) {
 					running = GL_FALSE;
 				}
@@ -581,7 +631,7 @@ class SceneE: public IScene {
 };
 
 IScene *currScene;
-IScene * scenes[5];
+IScene *scenes[5];
 
 void GLFWCALL keyHandler(int key, int action) {
 	if (action == GLFW_PRESS) {
