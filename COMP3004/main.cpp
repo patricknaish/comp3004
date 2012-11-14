@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <string>
 #include <GL/glew.h>
 #include <GL/glfw.h>
 #include <glm/glm.hpp>
@@ -28,14 +29,13 @@ GLuint wireframeShaderProgram, normalShaderProgram;
 const float speed = 60;
 
 //Modified from Tutorial 2
-char* filetobuf(char *file) { /* A simple function that will read a file into an allocated char pointer buffer */
+char* filetobuf(string file) { /* A simple function that will read a file into an allocated char pointer buffer */
     FILE *fptr;
     long length;
     char *buf;
-	errno_t err;
-    err = fopen_s(&fptr, file, "rb"); /* Open file for reading */
-    if (err != 0) { /* Return NULL on failure */
-        fprintf(stderr, "failed to open %s\n", file);
+    fptr = fopen(file.c_str(), "rb"); /* Open file for reading */
+    if (!fptr) { /* Return NULL on failure */
+        fprintf(stderr, "failed to open %s\n", file.c_str());
         return NULL;
     }
     fseek(fptr, 0, SEEK_END); /* Seek to the end of the file */
@@ -45,12 +45,12 @@ char* filetobuf(char *file) { /* A simple function that will read a file into an
     fread(buf, length, 1, fptr); /* Read the contents of the file in to the buffer */
     fclose(fptr); /* Close the file */
     buf[length] = 0; /* Null terminator */
-	printf("%s read successfully\n", file);
+	printf("%s read successfully\n", file.c_str());
     return buf; /* Return the buffer */
 }
 
 //From Tutorial 2
-GLuint setupShaders(char *vert, char *frag) {
+GLuint setupShaders(string vert, string frag) {
 	GLuint programID;
 	char text[1000];
     int length;
@@ -318,9 +318,8 @@ class SceneA: public IScene {
 
 			//Running stuff
 			running = GL_TRUE;
-			double old_time = 0, fps_time = 0, current_time = 0;
-			int frame_count = 0;
-			char title_str[255];
+			double old_time = 0, current_time = 0;
+			ostringstream title;
 			float rotation = 0.f;
 			while( running ) { 
 				current_time = glfwGetTime();
@@ -329,14 +328,6 @@ class SceneA: public IScene {
 					rotation = 0.f;
 				}
 				old_time = current_time;
-				if (current_time - fps_time >= 1) {
-					sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-fps_time));
-					glfwSetWindowTitle(title_str);
-					frame_count = 0;
-					fps_time = current_time;
-				}
-				frame_count++;
-
 				
 				View = rotate(View, rotation, vec3(1, 1, 1));
 				MVP = Projection * View * Model;
@@ -378,9 +369,8 @@ class SceneB: public IScene {
 
 			//Running stuff
 			running = GL_TRUE;
-			double old_time = 0, fps_time = 0, current_time = 0;
-			int frame_count = 0;
-			char title_str[255];
+			double old_time = 0, current_time = 0;
+			ostringstream title;
 			float rotation = 0.f;
 			while( running ) { 
 				current_time = glfwGetTime();
@@ -389,14 +379,6 @@ class SceneB: public IScene {
 					rotation = 0.f;
 				}
 				old_time = current_time;
-				if (current_time - fps_time >= 1) {
-					sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-fps_time));
-					glfwSetWindowTitle(title_str);
-					frame_count = 0;
-					fps_time = current_time;
-				}
-				frame_count++;
-
 				
 				View = rotate(View, rotation, vec3(1, 1, 1));
 				MVP = Projection * View * Model;
@@ -438,9 +420,8 @@ class SceneC: public IScene {
 
 			//Running stuff
 			running = GL_TRUE;
-			double old_time = 0, fps_time = 0, current_time = 0;
-			int frame_count = 0;
-			char title_str[255];
+			double old_time = 0, current_time = 0;
+			ostringstream title;
 			float rotation = 0.f;
 			while( running ) { 
 				current_time = glfwGetTime();
@@ -449,14 +430,6 @@ class SceneC: public IScene {
 					rotation = 0.f;
 				}
 				old_time = current_time;
-				if (current_time - fps_time >= 1) {
-					sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-fps_time));
-					glfwSetWindowTitle(title_str);
-					frame_count = 0;
-					fps_time = current_time;
-				}
-				frame_count++;
-
 				
 				View = rotate(View, rotation, vec3(1, 1, 1));
 				MVP = Projection * View * Model;
@@ -514,9 +487,8 @@ class SceneD: public IScene {
 
 			//Running stuff
 			running = GL_TRUE;
-			double old_time = 0, fps_time = 0, current_time = 0;
-			int frame_count = 0;
-			char title_str[255];
+			double old_time = 0, current_time = 0;
+			ostringstream title;
 			float rotation = 0.f;
 			while(running) { 
 				current_time = glfwGetTime();
@@ -525,13 +497,6 @@ class SceneD: public IScene {
 					rotation = 0.f;
 				}
 				old_time = current_time;
-				if (current_time - fps_time >= 1) {
-					sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-fps_time));
-					glfwSetWindowTitle(title_str);
-					frame_count = 0;
-					fps_time = current_time;
-				}
-				frame_count++;
 
 				View = rotate(View, rotation, vec3(1, 1, 1));
 				MVP = Projection * View * Model;
@@ -582,9 +547,8 @@ class SceneE: public IScene {
 
 			//Running stuff
 			running = GL_TRUE;
-			double old_time = 0, fps_time = 0;
-			int frame_count = 0;
-			char title_str[255];
+			double old_time = 0;
+			ostringstream title;
 			float rotation = 0.f, totalRotation = 0.f;
 			double translation = 0;
 			while(running) { 
@@ -602,13 +566,6 @@ class SceneE: public IScene {
 				cone2.translate(translation, 0, translation/2);
 
 				old_time = current_time;
-				if (current_time - fps_time >= 1) {
-					sprintf_s(title_str, "%2.1f FPS", frame_count/(current_time-fps_time));
-					glfwSetWindowTitle(title_str);
-					frame_count = 0;
-					fps_time = current_time;
-				}
-				frame_count++;
 		
 				glClearColor(0,0,0,0);
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
